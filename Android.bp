@@ -1,0 +1,36 @@
+cc_defaults {
+    name: "libimage_io-defaults",
+    cflags: [
+        "-DUNIX_ENV=1",
+        "-Werror",
+        "-Wno-reorder",
+        "-Wno-unused-parameter",
+    ],
+    rtti: true,
+    cppflags: ["-fno-exceptions"],
+    clang: true,
+    sanitize: {
+        misc_undefined: [
+            "unsigned-integer-overflow",
+            "signed-integer-overflow",
+        ],
+    },
+}
+
+cc_library_headers {
+  name: "libimage_io-headers",
+  export_include_dirs: ["includes"],
+}
+
+
+cc_library {
+    name: "libimage_io",
+    defaults: ["libimage_io-defaults"],
+    vendor_available: false,
+    header_libs: ["libimage_io-headers"],
+    export_include_dirs: ["includes"],
+    srcs: ["src/**/*.cc"],
+    static_libs: [
+        "libmodpb64",
+    ],
+}
