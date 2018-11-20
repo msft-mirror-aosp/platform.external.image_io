@@ -7,11 +7,11 @@ third_party {
     type: PIPER
     value: "http://google3/photos/editing/formats/image_io"
   }
-  version: "221162778"
+  version: "222429857"
   last_upgrade_date {
     year: 2018
     month: 11
-    day: 12
+    day: 21
   }
   license_type: NOTICE
 }
