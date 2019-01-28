@@ -127,7 +127,9 @@ DataDestination::TransferStatus Base64DecoderDataDestination::Transfer(
                                         decoded_buffer.get(), &pad_count1);
     if (total_bytes_decoded + pad_count1 !=
         number_leftover_and_stolen_decoded_bytes) {
-      MessageHandler::Get()->ReportMessage(Message::kDecodingError, "");
+      if (message_handler_) {
+        message_handler_->ReportMessage(Message::kDecodingError, "");
+      }
       has_error_ = true;
       return kTransferError;
     }
@@ -142,7 +144,9 @@ DataDestination::TransferStatus Base64DecoderDataDestination::Transfer(
     total_bytes_decoded += number_bytes_decoded;
     if (total_bytes_decoded + pad_count1 + pad_count2 !=
         decoded_buffer_length) {
-      MessageHandler::Get()->ReportMessage(Message::kDecodingError, "");
+      if (message_handler_) {
+        message_handler_->ReportMessage(Message::kDecodingError, "");
+      }
       has_error_ = true;
       return kTransferError;
     }
@@ -177,7 +181,9 @@ DataDestination::TransferStatus Base64DecoderDataDestination::Transfer(
 
 void Base64DecoderDataDestination::FinishTransfer() {
   if (leftover_bytes_.size() % 4) {
-    MessageHandler::Get()->ReportMessage(Message::kDecodingError, "");
+    if (message_handler_) {
+      message_handler_->ReportMessage(Message::kDecodingError, "");
+    }
     has_error_ = true;
   }
   next_destination_->FinishTransfer();

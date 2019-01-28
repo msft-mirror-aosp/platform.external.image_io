@@ -5,6 +5,7 @@
 
 #include "image_io/base/data_segment.h"
 #include "image_io/base/data_source.h"
+#include "image_io/base/message_handler.h"
 #include "image_io/jpeg/jpeg_marker.h"
 #include "image_io/jpeg/jpeg_segment_processor.h"
 
@@ -16,8 +17,9 @@ namespace image_io {
 /// examination.
 class JpegScanner {
  public:
-  JpegScanner()
-      : data_source_(nullptr),
+  explicit JpegScanner(MessageHandler* message_handler)
+      : message_handler_(message_handler),
+        data_source_(nullptr),
         segment_processor_(nullptr),
         current_location_(0),
         done_(false),
@@ -70,6 +72,9 @@ class JpegScanner {
   void GetNextSegment();
 
  private:
+  /// An optional message handler to write messages to.
+  MessageHandler* message_handler_;
+
   /// The DataSource from which DataSegments are obtained.
   DataSource* data_source_;
 

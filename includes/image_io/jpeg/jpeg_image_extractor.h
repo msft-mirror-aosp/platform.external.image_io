@@ -3,6 +3,7 @@
 
 #include "image_io/base/data_destination.h"
 #include "image_io/base/data_source.h"
+#include "image_io/base/message_handler.h"
 #include "image_io/jpeg/jpeg_info.h"
 
 namespace photos_editing_formats {
@@ -15,8 +16,12 @@ class JpegImageExtractor {
  public:
   /// @param jpeg_info The JpegInfo instance containing depth/image data.
   /// @param data_source The DataSource from which to transfer depth/image data.
-  JpegImageExtractor(const JpegInfo& jpeg_info, DataSource* data_source)
-      : jpeg_info_(jpeg_info), data_source_(data_source) {}
+  /// @param message_handler An optional message handler to write messages to.
+  JpegImageExtractor(const JpegInfo& jpeg_info, DataSource* data_source,
+                     MessageHandler* message_handler)
+      : jpeg_info_(jpeg_info),
+        data_source_(data_source),
+        message_handler_(message_handler) {}
 
   /// This function extracts the Apple depth image from the DataSource and sends
   /// the bytes to the DataDestination.
@@ -65,6 +70,9 @@ class JpegImageExtractor {
 
   /// The data source from which the images are extracted.
   DataSource* data_source_;
+
+  /// An optional message handler to write messages to.
+  MessageHandler* message_handler_;
 };
 
 }  // namespace image_io

@@ -45,12 +45,14 @@ constexpr size_t kBestDataSize = 0x10000;
 /// @param image_limit The limit on the number of images to get info of.
 /// @param data_source The data source from which to get info.
 /// @param info A pointer to the jpeg_info object to receive the info.
+/// @param message_handler For use when reporting messages.
 /// @return Whether the info was obtained successfully or not.
-bool GetJpegInfo(int image_limit, DataSource* data_source, JpegInfo* info) {
+bool GetJpegInfo(int image_limit, DataSource* data_source, JpegInfo* info,
+                 MessageHandler* message_handler) {
   JpegInfoBuilder info_builder;
   info_builder.SetImageLimit(image_limit);
   info_builder.SetCaptureSegmentBytes(kJfif);
-  JpegScanner scanner;
+  JpegScanner scanner(message_handler);
   scanner.Run(data_source, &info_builder);
   if (scanner.HasError()) {
     return false;
@@ -68,13 +70,17 @@ bool JpegAppleDepthBuilder::Run(DataSource* primary_image_data_source,
   depth_image_data_source_ = depth_image_data_source;
   data_destination_ = data_destination;
   if (!GetPrimaryImageData()) {
-    MessageHandler::Get()->ReportMessage(Message::kDecodingError,
-                                         "Primary image data");
+    if (message_handler_) {
+      message_handler_->ReportMessage(Message::kDecodingError,
+                                      "Primary image data");
+    }
     return false;
   }
   if (!GetDepthImageData()) {
-    MessageHandler::Get()->ReportMessage(Message::kDecodingError,
-                                         "Depth image data");
+    if (message_handler_) {
+      message_handler_->ReportMessage(Message::kDecodingError,
+                                      "Depth image data");
+    }
     return false;
   }
   data_destination->StartTransfer();
@@ -88,7 +94,7 @@ bool JpegAppleDepthBuilder::Run(DataSource* primary_image_data_source,
 
 bool JpegAppleDepthBuilder::GetPrimaryImageData() {
   JpegInfo info;
-  if (!GetJpegInfo(1, primary_image_data_source_, &info)) {
+  if (!GetJpegInfo(1, primary_image_data_source_, &info, message_handler_)) {
     return false;
   }
   if (info.GetImageRanges().empty()) {
@@ -119,7 +125,7 @@ bool JpegAppleDepthBuilder::GetPrimaryImageData() {
 
 bool JpegAppleDepthBuilder::GetDepthImageData() {
   JpegInfo info;
-  if (!GetJpegInfo(2, depth_image_data_source_, &info)) {
+  if (!GetJpegInfo(2, depth_image_data_source_, &info, message_handler_)) {
     return false;
   }
   if (!info.HasAppleDepth()) {
@@ -239,10 +245,13 @@ bool JpegAppleDepthBuilder::TransferData(DataSource* data_source,
         data_destination_->GetBytesTransferred() - old_byte_count;
     if (bytes_transferred != data_range.GetLength()) {
       result = DataSource::kTransferDataError;
-      std::stringstream ss;
-      ss << "JpegAppleDepthBuilder:data source transferred "
-         << bytes_transferred << " bytes instead of " << data_range.GetLength();
-      MessageHandler::Get()->ReportMessage(Message::kInternalError, ss.str());
+      if (message_handler_) {
+        std::stringstream ss;
+        ss << "JpegAppleDepthBuilder:data source transferred "
+           << bytes_transferred << " bytes instead of "
+           << data_range.GetLength();
+        message_handler_->ReportMessage(Message::kInternalError, ss.str());
+      }
     }
   }
   return result == DataSource::kTransferDataSuccess;

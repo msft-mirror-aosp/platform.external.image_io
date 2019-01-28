@@ -7,8 +7,14 @@
 namespace photos_editing_formats {
 namespace image_io {
 
-/// Byte is the noumenon unit of data.
+/// The various integer and byte types used in this package.
 using Byte = std::uint8_t;
+using Int32 = std::int32_t;
+using Int64 = std::int64_t;
+using UInt8 = std::uint8_t;
+using UInt16 = std::uint16_t;
+using UInt32 = std::uint32_t;
+using UInt64 = std::uint64_t;
 
 /// A Byte value and a validity flag.
 struct ValidatedByte {

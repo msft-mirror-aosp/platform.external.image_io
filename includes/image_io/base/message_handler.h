@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "image_io/base/message.h"
+#include "image_io/base/message_stats.h"
 #include "image_io/base/message_store.h"
 #include "image_io/base/message_writer.h"
 
@@ -15,20 +16,9 @@ namespace image_io {
 /// to report status and error conditions.
 class MessageHandler {
  public:
-  /// Initializes the MessageHandler for client use. Multithread applications
-  /// might find this function useful to call in their initialization section,
-  /// to guarentee that threads will not create race conditions when calling the
-  /// Get function for the first time.
-  static void Init(std::unique_ptr<MessageWriter> message_writer,
-                   std::unique_ptr<MessageStore> message_store);
-
-  /// This function is thread-safe as long as the Init() function is called in
-  /// non-multiple-threaded startup code; if the Init() fucnction was not called
-  /// there may be race conditions that causes the message handler returned from
-  /// Get() called in one thread to be different from that returned by the call
-  /// in a different thread.
-  /// @return The message handler used by the code in this library.
-  static MessageHandler* Get();
+  /// The default constructor for MessageHandler creates a MessageWriter and
+  /// VectorMessageStore for handling writing and storing messages.
+  MessageHandler();
 
   /// Sets the message writer to use when ReportMessage() is called. If client
   /// code does not call this function, the MessageHandler returned by the Get()
@@ -55,14 +45,29 @@ class MessageHandler {
   /// should call this function again so that memory is not leaked when it is
   /// done using this library.
   void ClearMessages() {
+    message_stats_->Clear();
     if (message_store_) {
       message_store_->ClearMessages();
     }
   }
 
   /// @return Whether the message handler's store has error messages or not.
-  bool HasErrorMessages() const {
-    return message_store_ ? message_store_->HasErrorMessages() : false;
+  bool HasErrorMessages() const { return GetErrorMessageCount() > 0; }
+
+  /// @return The number of error messages reported.
+  size_t GetErrorMessageCount() const { return message_stats_->error_count; }
+
+  /// @return The number of warning messages reported.
+  size_t GetWarningMessageCount() const {
+    return message_stats_->warning_count;
+  }
+
+  /// @return The number of status messages reported.
+  size_t GetStatusMessageCount() const { return message_stats_->status_count; }
+
+  /// @return The message stats object as a shared pointer.
+  std::shared_ptr<MessageStats> GetMessageStats() const {
+    return message_stats_;
   }
 
   /// @return The vector of errors maintained by the message handler's store.
@@ -85,15 +90,14 @@ class MessageHandler {
   void ReportMessage(const Message& message);
 
  private:
-  MessageHandler() = default;
-  ~MessageHandler();
-
- private:
   /// The message writer used by ReportMessage, or null.
   std::unique_ptr<MessageWriter> message_writer_;
 
   /// The message store for saving messages for later, or null.
   std::unique_ptr<MessageStore> message_store_;
+
+  /// The message stats for counting messages.
+  std::shared_ptr<MessageStats> message_stats_;
 };
 
 }  // namespace image_io

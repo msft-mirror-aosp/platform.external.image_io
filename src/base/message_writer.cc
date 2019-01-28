@@ -12,19 +12,37 @@ using std::stringstream;
 
 string MessageWriter::GetFormattedMessage(const Message& message) const {
   stringstream message_stream;
-  message_stream << GetTypeCategory(message.GetType()) << ":"
-                 << GetTypeDescription(message.GetType(),
-                                       message.GetSystemErrno())
-                 << ":" << message.GetText();
+  auto type = message.GetType();
+  if (type != Message::kStatus) {
+    message_stream << GetTypeCategory(type) << ":";
+  }
+  if (type == Message::kInternalError || type == Message::kStdLibError) {
+    message_stream << GetTypeDescription(type, message.GetSystemErrno()) << ":";
+  }
+  message_stream << message.GetText();
   return message_stream.str();
 }
 
 string MessageWriter::GetTypeCategory(Message::Type type) const {
-  if (type == Message::kStatus) {
-    return "STATUS";
-  } else {
-    return "ERROR";
+  string category;
+  switch (type) {
+    case Message::kStatus:
+      category = "STATUS";
+      break;
+    case Message::kWarning:
+      category = "WARNING";
+      break;
+    case Message::kStdLibError:
+    case Message::kPrematureEndOfDataError:
+    case Message::kStringNotFoundError:
+    case Message::kDecodingError:
+    case Message::kSyntaxError:
+    case Message::kValueError:
+    case Message::kInternalError:
+      category = "ERROR";
+      break;
   }
+  return category;
 }
 
 string MessageWriter::GetTypeDescription(Message::Type type,
@@ -32,6 +50,8 @@ string MessageWriter::GetTypeDescription(Message::Type type,
   string description;
   switch (type) {
     case Message::kStatus:
+      break;
+    case Message::kWarning:
       break;
     case Message::kStdLibError:
       description = system_errno > 0 ? std::strerror(system_errno) : "Unknown";

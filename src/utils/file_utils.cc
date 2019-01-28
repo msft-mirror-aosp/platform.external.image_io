@@ -6,7 +6,6 @@
 #import <memory>
 
 #include "image_io/base/data_range.h"
-#include "image_io/base/message_handler.h"
 
 namespace photos_editing_formats {
 namespace image_io {
@@ -29,38 +28,38 @@ bool GetFileSize(const std::string& file_name, size_t* size) {
 }
 
 unique_ptr<ostream> OpenOutputFile(const std::string& file_name,
-                                   ReportErrorPolicy report_error_policy) {
+                                   MessageHandler* message_handler) {
   auto* file_stream = new fstream(file_name, std::ios::out | std::ios::binary);
   if (file_stream && !file_stream->is_open()) {
     delete file_stream;
     file_stream = nullptr;
-    if (report_error_policy == ReportErrorPolicy::kReportError) {
-      MessageHandler::Get()->ReportMessage(Message::kStdLibError, file_name);
+    if (message_handler) {
+      message_handler->ReportMessage(Message::kStdLibError, file_name);
     }
   }
   return unique_ptr<ostream>(file_stream);
 }
 
 unique_ptr<istream> OpenInputFile(const std::string& file_name,
-                                  ReportErrorPolicy report_error_policy) {
+                                  MessageHandler* message_handler) {
   auto* file_stream = new fstream(file_name, std::ios::in | std::ios::binary);
   if (file_stream && !file_stream->is_open()) {
     delete file_stream;
     file_stream = nullptr;
-    if (report_error_policy == ReportErrorPolicy::kReportError) {
-      MessageHandler::Get()->ReportMessage(Message::kStdLibError, file_name);
+    if (message_handler) {
+      message_handler->ReportMessage(Message::kStdLibError, file_name);
     }
   }
   return unique_ptr<istream>(file_stream);
 }
 
-std::shared_ptr<DataSegment> ReadEntireFile(
-    const std::string& file_name, ReportErrorPolicy report_error_policy) {
+std::shared_ptr<DataSegment> ReadEntireFile(const std::string& file_name,
+                                            MessageHandler* message_handler) {
   size_t buffer_size = 0;
   std::shared_ptr<DataSegment> shared_data_segment;
   if (GetFileSize(file_name, &buffer_size)) {
     unique_ptr<istream> shared_istream =
-        OpenInputFile(file_name, ReportErrorPolicy::kDontReportError);
+        OpenInputFile(file_name, message_handler);
     if (shared_istream) {
       Byte* buffer = new Byte[buffer_size];
       if (buffer) {
@@ -74,9 +73,8 @@ std::shared_ptr<DataSegment> ReadEntireFile(
       }
     }
   }
-  if (!shared_data_segment &&
-      report_error_policy == ReportErrorPolicy::kReportError) {
-    MessageHandler::Get()->ReportMessage(Message::kStdLibError, file_name);
+  if (!shared_data_segment && message_handler) {
+    message_handler->ReportMessage(Message::kStdLibError, file_name);
   }
   return shared_data_segment;
 }
