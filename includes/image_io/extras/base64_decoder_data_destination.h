@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "image_io/base/data_destination.h"
+#include "image_io/base/message_handler.h"
 
 namespace photos_editing_formats {
 namespace image_io {
@@ -16,8 +17,11 @@ class Base64DecoderDataDestination : public DataDestination {
  public:
   /// @param next_destination The next DataDestination in the chain which will
   /// be sent the decoded bytes received by the Transfer() function.
-  explicit Base64DecoderDataDestination(DataDestination* next_destination)
+  /// @param message_handler An optional message handler to write messages to.
+  Base64DecoderDataDestination(DataDestination* next_destination,
+                               MessageHandler* message_handler)
       : next_destination_(next_destination),
+        message_handler_(message_handler),
         next_decoded_location_(0),
         has_error_(false) {}
 
@@ -38,6 +42,9 @@ class Base64DecoderDataDestination : public DataDestination {
  private:
   /// The destination that the decoded data is sent to.
   DataDestination* next_destination_;
+
+  /// An optional message handler to write messages to.
+  MessageHandler* message_handler_;
 
   /// If the transfer_range parameter of the Transfer function does not have a
   /// length that is a multiple of 4, then the leftover bytes are placed in this

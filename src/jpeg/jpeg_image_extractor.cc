@@ -51,8 +51,9 @@ bool JpegImageExtractor::ExtractImage(const DataRange& image_range,
                data_range_destination.HasDisjointTransferRanges() ||
                data_range_destination.GetTrackedDataRange() != image_range) {
       has_errors = true;
-      MessageHandler::Get()->ReportMessage(Message::kPrematureEndOfDataError,
-                                           "");
+      if (message_handler_) {
+        message_handler_->ReportMessage(Message::kPrematureEndOfDataError, "");
+      }
     }
   }
   data_range_destination.FinishTransfer();
@@ -73,12 +74,13 @@ bool JpegImageExtractor::ExtractImage(JpegXmpInfo::Type xmp_info_type,
                                       DataDestination* image_destination) {
   bool has_errors = false;
   const bool has_image = jpeg_info_.HasImage(xmp_info_type);
-  Base64DecoderDataDestination base64_decoder(image_destination);
+  Base64DecoderDataDestination base64_decoder(image_destination,
+                                              message_handler_);
   const vector<DataRange>& data_ranges =
       jpeg_info_.GetSegmentDataRanges(xmp_info_type);
   size_t data_ranges_count = data_ranges.size();
   JpegXmpDataExtractor xmp_data_extractor(xmp_info_type, data_ranges_count,
-                                          &base64_decoder);
+                                          &base64_decoder, message_handler_);
   xmp_data_extractor.StartTransfer();
   if (has_image) {
     for (size_t index = 0; index < data_ranges_count; ++index) {
@@ -97,8 +99,10 @@ bool JpegImageExtractor::ExtractImage(JpegXmpInfo::Type xmp_info_type,
         break;
       } else if (result == DataSource::kTransferDataNone) {
         has_errors = true;
-        MessageHandler::Get()->ReportMessage(Message::kPrematureEndOfDataError,
-                                             "");
+        if (message_handler_) {
+          message_handler_->ReportMessage(Message::kPrematureEndOfDataError,
+                                          "");
+        }
       }
     }
   }

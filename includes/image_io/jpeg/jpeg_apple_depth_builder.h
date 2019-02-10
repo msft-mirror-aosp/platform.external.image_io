@@ -6,6 +6,7 @@
 #include "image_io/base/data_destination.h"
 #include "image_io/base/data_range.h"
 #include "image_io/base/data_source.h"
+#include "image_io/base/message_handler.h"
 
 namespace photos_editing_formats {
 namespace image_io {
@@ -14,8 +15,9 @@ namespace image_io {
 /// and original depth image.
 class JpegAppleDepthBuilder {
  public:
-  JpegAppleDepthBuilder()
-      : primary_image_data_source_(nullptr),
+  explicit JpegAppleDepthBuilder(MessageHandler* message_handler)
+      : message_handler_(message_handler),
+        primary_image_data_source_(nullptr),
         depth_image_data_source_(nullptr),
         data_destination_(nullptr) {}
 
@@ -68,6 +70,9 @@ class JpegAppleDepthBuilder {
   ///     data destination.
   /// @param data_range The data range in the data source to transfer.
   bool TransferData(DataSource *data_source, const DataRange& data_range);
+
+  /// An optional message handler to write messages to.
+  MessageHandler* message_handler_;
 
   /// The data source containing the primary image.
   DataSource* primary_image_data_source_;

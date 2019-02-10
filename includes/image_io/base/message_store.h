@@ -61,7 +61,7 @@ class ErrorFlagMessageStore : public MessageStore {
   ErrorFlagMessageStore() : has_error_(false) {}
   void ClearMessages() override { has_error_ = false; }
   void AddMessage(const Message& message) override {
-    if (message.GetType() != Message::kStatus) {
+    if (message.IsError()) {
       has_error_ = true;
     }
   }

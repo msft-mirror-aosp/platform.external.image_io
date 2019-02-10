@@ -50,8 +50,10 @@ DataDestination::TransferStatus JpegXmpDataExtractor::Transfer(
       }
     }
     if (xmp_data_begin == encoded_data_begin) {
-      MessageHandler::Get()->ReportMessage(Message::kStringNotFoundError,
-                                           property_name + "=\"");
+      if (message_handler_) {
+        message_handler_->ReportMessage(Message::kStringNotFoundError,
+                                        property_name + "=\"");
+      }
       has_error_ = true;
       return kTransferError;
     }
@@ -59,7 +61,9 @@ DataDestination::TransferStatus JpegXmpDataExtractor::Transfer(
   if (segment_index_ == last_segment_index_) {
     xmp_data_end = data_segment.Find(xmp_data_begin, '"');
     if (xmp_data_end == transfer_range.GetEnd()) {
-      MessageHandler::Get()->ReportMessage(Message::kStringNotFoundError, "\"");
+      if (message_handler_) {
+        message_handler_->ReportMessage(Message::kStringNotFoundError, "\"");
+      }
       has_error_ = true;
       return kTransferError;
     }

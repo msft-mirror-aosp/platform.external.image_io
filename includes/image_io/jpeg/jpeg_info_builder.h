@@ -34,6 +34,12 @@ class JpegInfoBuilder : public JpegSegmentProcessor {
   /// @param type The type of segment info to capture the value of.
   void SetCaptureSegmentBytes(const std::string& segment_info_type);
 
+  /// @return True if the segment is a primary Xmp segment.
+  bool IsPrimaryXmpSegment(const JpegSegment& segment) const;
+
+  /// @return True if the segment is an extended Xmp segment.
+  bool IsExtendedXmpSegment(const JpegSegment& segment) const;
+
   void Start(JpegScanner* scanner) override;
   void Process(JpegScanner* scanner, const JpegSegment& segment) override;
   void Finish(JpegScanner* scanner) override;
@@ -44,12 +50,6 @@ class JpegInfoBuilder : public JpegSegmentProcessor {
 
   /// @return True if the data members indicate Apple matte is present.
   bool HasAppleMatte() const;
-
-  /// @return True if the segment is a primary Xmp segment.
-  bool IsPrimaryXmpSegment(const JpegSegment& segment) const;
-
-  /// @return True if the segment is an extended Xmp segment.
-  bool IsExtendedXmpSegment(const JpegSegment& segment) const;
 
   /// @return True if the segment is an Mpf segment.
   bool IsMpfSegment(const JpegSegment& segment) const;

@@ -15,6 +15,9 @@ class Message {
     /// A Status message.
     kStatus,
 
+    /// A Warning message.
+    kWarning,
+
     /// An error from the stdlib was detected. The std::errno variable can be
     /// used to programmatically decide what to do, or use the std::strerror
     /// function to get a string description of the error.
@@ -65,6 +68,17 @@ class Message {
 
   /// @return The text of the message.
   const std::string& GetText() const { return text_; }
+
+  /// @return Whether the message is an error message.
+  bool IsError() const {
+    return type_ != Message::kStatus && type_ != Message::kWarning;
+  }
+
+  /// @return Whether the message is a warning message.
+  bool IsWarning() const { return type_ == Message::kWarning; }
+
+  /// @return Whether the message is a status message.
+  bool IsStatus() const { return type_ == Message::kStatus; }
 
  private:
   /// The type of message.

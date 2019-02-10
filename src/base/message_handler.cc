@@ -12,34 +12,10 @@ namespace image_io {
 using std::string;
 using std::unique_ptr;
 
-/// The message handler. No effort made to delete it at program's end.
-static MessageHandler* gMessageHandler = nullptr;
-
-void MessageHandler::Init(std::unique_ptr<MessageWriter> message_writer,
-                          std::unique_ptr<MessageStore> message_store) {
-  auto* old_handler = gMessageHandler;
-  gMessageHandler = new MessageHandler;
-  gMessageHandler->SetMessageWriter(std::move(message_writer));
-  gMessageHandler->SetMessageStore(std::move(message_store));
-  delete old_handler;
-}
-
-MessageHandler* MessageHandler::Get() {
-  if (!gMessageHandler) {
-    gMessageHandler = new MessageHandler;
-    gMessageHandler->SetMessageWriter(
-        unique_ptr<MessageWriter>(new CoutMessageWriter));
-    gMessageHandler->SetMessageStore(
-        unique_ptr<MessageStore>(new VectorMessageStore));
-  }
-  return gMessageHandler;
-}
-
-MessageHandler::~MessageHandler() {
-  if (gMessageHandler == this) {
-    gMessageHandler = nullptr;
-  }
-}
+MessageHandler::MessageHandler()
+    : message_writer_(new CoutMessageWriter),
+      message_store_(new VectorMessageStore),
+      message_stats_(new MessageStats) {}
 
 void MessageHandler::SetMessageWriter(
     std::unique_ptr<MessageWriter> message_writer) {
@@ -57,6 +33,13 @@ void MessageHandler::ReportMessage(Message::Type type, const string& text) {
 }
 
 void MessageHandler::ReportMessage(const Message& message) {
+  if (message.IsError()) {
+    message_stats_->error_count++;
+  } else if (message.IsWarning()) {
+    message_stats_->warning_count++;
+  } else {
+    message_stats_->status_count++;
+  }
   if (message_store_) {
     message_store_->AddMessage(message);
   }

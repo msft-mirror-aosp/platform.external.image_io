@@ -93,10 +93,12 @@ ValidatedByte JpegScanner::GetValidatedByte(size_t location) {
   if (next_segment_ && next_segment_->Contains(location)) {
     return next_segment_->GetValidatedByte(location);
   }
-  stringstream sstream;
-  sstream << location;
-  MessageHandler::Get()->ReportMessage(Message::kPrematureEndOfDataError,
-                                       sstream.str());
+  if (message_handler_) {
+    stringstream sstream;
+    sstream << location;
+    message_handler_->ReportMessage(Message::kPrematureEndOfDataError,
+                                    sstream.str());
+  }
   return InvalidByte();
 }
 
