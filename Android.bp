@@ -39,6 +39,11 @@ cc_library_headers {
     host_supported: true,
     vendor_available: true,
     export_include_dirs: ["includes"],
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
 }
 
 
@@ -53,6 +58,11 @@ cc_library {
     static_libs: [
         "libmodpb64",
     ],
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
 }
 
 cc_library_headers {
