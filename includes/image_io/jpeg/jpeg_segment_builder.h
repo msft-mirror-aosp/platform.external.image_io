@@ -67,6 +67,12 @@ class JpegSegmentBuilder {
   ///     bytes long, it is either truncated or extended with 0s.
   void AddExtendedXmpHeader(const std::string& xmp_guid);
 
+  /// Adds the XMP packet begin string.
+  void AddXmpPacketBegin();
+
+  /// Adds the XMP packet end string.
+  void AddXmpPacketEnd();
+
   /// Adds the XMP syntax that appears at the start of an XMP segment. This
   /// syntax appears after the XMP header in a segment, so this function should
   /// be called after the AddExtendedXmpHeader() function.

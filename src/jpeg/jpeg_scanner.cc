@@ -1,5 +1,6 @@
 #include "image_io/jpeg/jpeg_scanner.h"
 
+#include <algorithm>
 #include <sstream>
 
 #include "image_io/base/message_handler.h"
@@ -11,7 +12,7 @@ namespace image_io {
 using std::stringstream;
 
 /// The minimum size for the DataSegments requested from the DataSource. Using
-/// this value will guarentee that a JpegSegment will occupy at most two
+/// this value will guarantee that a JpegSegment will occupy at most two
 /// DataSegments.
 const size_t kMinBufferDataRequestSize = 0x10000;
 
@@ -39,6 +40,18 @@ void JpegScanner::Run(DataSource* data_source,
 }
 
 void JpegScanner::FindAndProcessSegments() {
+  auto byte0 = current_segment_->GetValidatedByte(0);
+  auto byte1 = current_segment_->GetValidatedByte(1);
+  if (!byte0.is_valid || !byte1.is_valid || byte0.value != JpegMarker::kStart ||
+      byte1.value != JpegMarker::kSOI) {
+    if (message_handler_) {
+      std::stringstream sstream;
+      sstream << "JPegScanner: The data source does not contain JPEG data";
+      message_handler_->ReportMessage(Message::kDecodingError, sstream.str());
+    }
+    SetErrorAndDone();
+    return;
+  }
   while (!IsDone() && !HasError()) {
     size_t begin_segment_location =
         current_segment_->Find(current_location_, JpegMarker::kStart);
@@ -62,6 +75,7 @@ void JpegScanner::FindAndProcessSegments() {
       if (marker.IsValid() && interesting_marker_flags_[marker.GetType()]) {
         size_t end_segment_location =
             begin_segment_location + JpegMarker::kLength + payload_size;
+
         GetByte(end_segment_location - 1);
         if (!HasError()) {
           JpegSegment segment(begin_segment_location, end_segment_location,
@@ -86,6 +100,20 @@ size_t JpegScanner::GetPayloadSize(const JpegMarker& marker,
 }
 
 ValidatedByte JpegScanner::GetValidatedByte(size_t location) {
+  if (HasError()) {
+    done_ = true;
+    return InvalidByte();
+  }
+  if (IsDone()) {
+    if (message_handler_) {
+      stringstream sstream;
+      sstream << "JPegScanner:GetValidatedByte:"
+              << "Called after done flag was set at byte offset: " << location;
+      message_handler_->ReportMessage(Message::kInternalError, sstream.str());
+    }
+    SetErrorAndDone();
+    return InvalidByte();
+  }
   if (current_segment_->Contains(location)) {
     return current_segment_->GetValidatedByte(location);
   }
@@ -95,10 +123,11 @@ ValidatedByte JpegScanner::GetValidatedByte(size_t location) {
   }
   if (message_handler_) {
     stringstream sstream;
-    sstream << location;
-    message_handler_->ReportMessage(Message::kPrematureEndOfDataError,
-                                    sstream.str());
+    sstream << "JPegScanner:GetValidatedByte:"
+            << "Premature end of data found at byte offset: " << location;
+    message_handler_->ReportMessage(Message::kDecodingError, sstream.str());
   }
+  SetErrorAndDone();
   return InvalidByte();
 }
 
@@ -107,7 +136,6 @@ Byte JpegScanner::GetByte(size_t location) {
   if (validated_byte.is_valid) {
     return validated_byte.value;
   }
-  has_error_ = true;
   return 0;
 }
 
@@ -116,6 +144,11 @@ void JpegScanner::GetNextSegment() {
     next_segment_ = data_source_->GetDataSegment(current_segment_->GetEnd(),
                                                  kMinBufferDataRequestSize);
   }
+}
+
+void JpegScanner::SetErrorAndDone() {
+  has_error_ = true;
+  SetDone();
 }
 
 }  // namespace image_io

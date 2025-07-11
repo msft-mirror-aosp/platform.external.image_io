@@ -7,6 +7,18 @@
 namespace photos_editing_formats {
 namespace image_io {
 
+/// Further qualifications that can be placed on a numerical value.
+enum ValidatedValueType {
+  kInvalidValue,
+  kValidValue,
+  kValidValueGt0,
+  kValidValueGe0,
+  kValidValueLt0,
+  kValidValueLe0,
+  kValidValueEq0,
+  kValidValueNe0,
+};
+
 template <class T>
 struct ValidatedNumber {
   ValidatedNumber() : ValidatedNumber(T(), false) {}
@@ -30,6 +42,31 @@ ValidatedNumber<T> GetValidatedNumber(const std::string& str) {
     }
   }
   return result;
+}
+
+/// @param number The number value to validate.
+/// @param type The required value type to use in the validation.
+/// @return Whether the value meets the requirements of the type.
+template <class T>
+bool ValidateValueType(ValidatedNumber<T> number, ValidatedValueType type) {
+  switch (type) {
+    case kInvalidValue:
+      return !number.is_valid;
+    case kValidValue:
+      return number.is_valid;
+    case kValidValueGt0:
+      return number.is_valid && number.value > 0;
+    case kValidValueGe0:
+      return number.is_valid && number.value >= 0;
+    case kValidValueLt0:
+      return number.is_valid && number.value < 0;
+    case kValidValueLe0:
+      return number.is_valid && number.value <= 0;
+    case kValidValueEq0:
+      return number.is_valid && number.value == 0;
+    case kValidValueNe0:
+      return number.is_valid && number.value != 0;
+  }
 }
 
 }  // namespace image_io

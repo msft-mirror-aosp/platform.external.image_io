@@ -22,6 +22,14 @@ bool GetFileSize(const std::string& file_name, size_t* size);
 std::unique_ptr<std::ostream> OpenOutputFile(const std::string& file_name,
                                              MessageHandler* message_handler);
 
+/// @param file_name The name of the file to open for output.
+/// @param message_handler Optional message handler to write messages to.
+/// @param append_mode Whether to open the file stream in append mode.
+/// @return An ostream pointer or nullptr if the open failed.
+std::unique_ptr<std::ostream> OpenOutputFile(const std::string& file_name,
+                                             MessageHandler* message_handler,
+                                             bool append_mode);
+
 /// @param file_name The name of the file to open for input.
 /// @param message_handler Optional message handler to write messages to.
 /// @return An istream pointer or nullptr if the open failed.

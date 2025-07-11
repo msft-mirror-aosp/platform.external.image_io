@@ -35,6 +35,13 @@ class JpegImageExtractor {
   /// @return True if an image was extracted.
   bool ExtractAppleMatteImage(DataDestination* image_destination);
 
+  /// This function extracts the given HDR gain map type image from the
+  /// DataSource and sends the bytes to the DataDestination.
+  /// @param image_destination The DataDestination to receive the image data.
+  /// @return True if an image was extracted.
+  bool ExtractGainMapImage(DataDestination* image_destination,
+                           size_t index = 0);
+
   /// This function extracts the GDepth type image from the DataSource and
   /// sends the bytes to the DataDestination.
   /// @param image_destination The DataDestination to receive the image data.

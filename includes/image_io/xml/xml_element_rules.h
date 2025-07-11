@@ -7,10 +7,11 @@ namespace photos_editing_formats {
 namespace image_io {
 
 /// The XmlElementRule parses the following syntax:
-/// Element ::= EmptyElemTag  | STag content ETag
-/// EmptyElemTag ::=  '<' Name (S Attribute)* S? '/>'
-/// STag         ::=  '<' Name (S Attribute)* S? '>'
-/// ETag         ::=  '</' Name S? '>'
+/// Element       ::= EmptyElemTag  | STag content ETag
+/// EmptyElemTag  ::= '<' Name (S AttrOrElement)* S? '/>'
+/// STag          ::= '<' Name (S AttrOrElement)* S? '>'
+/// ETag          ::= '</' Name S? '>'
+/// AttrOrelement ::= Attribute | Element
 /// The Attribute syntax is parsed by XmlAttributeRule, which this rule
 /// delegates to as a child rule. The EmptyElemTag type syntax is handled by
 /// this rule. The STag part of the syntax is handled by this rule, but the

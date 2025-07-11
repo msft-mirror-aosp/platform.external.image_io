@@ -1,9 +1,11 @@
 #include "image_io/utils/file_utils.h"
 
 #include <sys/stat.h>
-#import <fstream>
-#import <iostream>
-#import <memory>
+
+#include <fstream>
+#include <iostream>
+#include <memory>
+#include <string>
 
 #include "image_io/base/data_range.h"
 
@@ -29,7 +31,17 @@ bool GetFileSize(const std::string& file_name, size_t* size) {
 
 unique_ptr<ostream> OpenOutputFile(const std::string& file_name,
                                    MessageHandler* message_handler) {
-  auto* file_stream = new fstream(file_name, std::ios::out | std::ios::binary);
+  return OpenOutputFile(file_name, message_handler, false);
+}
+
+unique_ptr<ostream> OpenOutputFile(const std::string& file_name,
+                                   MessageHandler* message_handler,
+                                   bool append_mode) {
+  std::ios_base::openmode mode = std::ios::out | std::ios::binary;
+  if (append_mode) {
+    mode |= std::ios_base::app;
+  }
+  auto* file_stream = new fstream(file_name, mode);
   if (file_stream && !file_stream->is_open()) {
     delete file_stream;
     file_stream = nullptr;

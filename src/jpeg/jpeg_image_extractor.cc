@@ -5,6 +5,7 @@
 #include "image_io/base/data_range_tracking_destination.h"
 #include "image_io/base/message_handler.h"
 #include "image_io/extras/base64_decoder_data_destination.h"
+#include "image_io/jpeg/jpeg_gain_map_info.h"
 #include "image_io/jpeg/jpeg_segment.h"
 #include "image_io/jpeg/jpeg_xmp_data_extractor.h"
 
@@ -35,6 +36,17 @@ bool JpegImageExtractor::ExtractAppleMatteImage(
   bool succeeded =
       ExtractImage(jpeg_info_.GetAppleMatteImageRange(), image_destination);
   return jpeg_info_.HasAppleMatte() && succeeded;
+}
+
+bool JpegImageExtractor::ExtractGainMapImage(DataDestination* image_destination,
+                                             size_t index) {
+  const auto& gain_map_info_vector = jpeg_info_.GetGainMapInfoVector();
+  JpegGainMapInfo gain_map_info =
+      index >= gain_map_info_vector.size()
+          ? JpegGainMapInfo()
+          : jpeg_info_.GetGainMapInfoVector()[index];
+  bool succeeded = ExtractImage(gain_map_info.image_range, image_destination);
+  return jpeg_info_.HasGainMap() && succeeded;
 }
 
 bool JpegImageExtractor::ExtractImage(const DataRange& image_range,
