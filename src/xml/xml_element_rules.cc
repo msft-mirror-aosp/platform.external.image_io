@@ -1,5 +1,6 @@
 #include "image_io/xml/xml_element_rules.h"
 
+#include <cstdio>
 #include <utility>
 
 #include "image_io/xml/xml_attribute_rule.h"
@@ -17,7 +18,7 @@ namespace {
 const char kWhitespace[] = "Whitespace";
 const char kEmptyElementEnd[] = "EmptyElementEnd";
 const char kElementEnd[] = "ElementEnd";
-const char kElementSentinalDescription[] =
+const char kElementSentinelDescription[] =
     "The start of an attribute name or the end of the element ('>' or '/>')";
 
 /// A shortcut for referring to all XmlPortion bits.
@@ -46,8 +47,10 @@ XmlElementRule::XmlElementRule(XmlRule::StartPoint start_point)
   AddNameTerminal().WithAction(
       [&](const XmlActionContext& context) { return HandleName(context); });
   AddOptionalWhitespaceTerminal().WithName(kWhitespace);
-  AddSentinelTerminal("~/>")
-      .WithDescription(kElementSentinalDescription)
+  // Reminder: the ~ terminal refers to the first character of an identifier.
+  // In this case, it would represent the start of an attribute name.
+  AddSentinelTerminal("~/><")
+      .WithDescription(kElementSentinelDescription)
       .WithAction([&](const XmlActionContext& context) {
         return HandlePostWhitespaceChar(context);
       });
@@ -82,7 +85,20 @@ DataMatchResult XmlElementRule::HandlePostWhitespaceChar(
     size_t index = GetTerminalIndexFromName(kElementEnd);
     SetTerminalIndex(index);
   } else if (sentinel == '~') {
+    // This is for the start of an attribute in element. After processing the
+    // attribute, the rule will be popped off the stack and parsing will
+    // continue at the optional kWhitespace terminal.
     std::unique_ptr<XmlRule> rule(new XmlAttributeRule);
+    SetNextRule(std::move(rule));
+    ResetTerminalScanners();
+    size_t index = GetTerminalIndexFromName(kWhitespace);
+    SetTerminalIndex(index);
+    result.SetType(DataMatchResult::kPartial);
+  } else if (sentinel == '<') {
+    // This is for an element within an element, along side the element's
+    // attributes. After processing the element, the new rule will be popped off
+    // the stack and parsing will continue at the optional kWhitespace terminal.
+    std::unique_ptr<XmlRule> rule(new XmlElementRule);
     SetNextRule(std::move(rule));
     ResetTerminalScanners();
     size_t index = GetTerminalIndexFromName(kWhitespace);

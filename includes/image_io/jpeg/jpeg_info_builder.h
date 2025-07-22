@@ -6,12 +6,19 @@
 #include <vector>
 
 #include "image_io/base/data_range.h"
+#include "image_io/jpeg/jpeg_gain_map_info.h"
 #include "image_io/jpeg/jpeg_info.h"
 #include "image_io/jpeg/jpeg_segment_processor.h"
 #include "image_io/jpeg/jpeg_xmp_info_builder.h"
 
 namespace photos_editing_formats {
 namespace image_io {
+
+/// A structure to refer to a scanned jpeg segment that has some sort of error.
+struct JpegSegmentError {
+  DataRange data_range;
+  std::string error_message;
+};
 
 /// JpegInfoBuilder is JpegSegmentProcessor that collects the location and type
 /// of depth information in the JPEG file so that subsequent operations can
@@ -40,6 +47,25 @@ class JpegInfoBuilder : public JpegSegmentProcessor {
   /// @return True if the segment is an extended Xmp segment.
   bool IsExtendedXmpSegment(const JpegSegment& segment) const;
 
+  /// @return True if the segment is an ISO 21496-1 metadata segment.
+  bool IsIsoGainMapMetadataSegment(const JpegSegment& segment) const;
+
+  /// @return True if the segment is an Mpf segment.
+  bool IsMpfSegment(const JpegSegment& segment) const;
+
+  /// @return Whether the builder has segment errors.
+  bool HasSegmentErrors() const { return !segment_errors_.empty(); }
+
+  /// @return The segment errors that were encountered.
+  const std::vector<JpegSegmentError>& GetSegmentErrors() const {
+    return segment_errors_;
+  }
+
+  /// Adds a segment error to the builder's array of errors.
+  void AddSegmentError(const JpegSegmentError& segment_error) {
+    segment_errors_.push_back(segment_error);
+  }
+
   void Start(JpegScanner* scanner) override;
   void Process(JpegScanner* scanner, const JpegSegment& segment) override;
   void Finish(JpegScanner* scanner) override;
@@ -51,14 +77,14 @@ class JpegInfoBuilder : public JpegSegmentProcessor {
   /// @return True if the data members indicate Apple matte is present.
   bool HasAppleMatte() const;
 
-  /// @return True if the segment is an Mpf segment.
-  bool IsMpfSegment(const JpegSegment& segment) const;
-
   /// @return True if the segment is an Exif segment.
   bool IsExifSegment(const JpegSegment& segment) const;
 
   /// @return True if the segment is an Jfif segment.
   bool IsJfifSegment(const JpegSegment& segment) const;
+
+  /// @param segment The extra APPn segment to process.
+  void ProcessExtraAppSegment(const JpegSegment& segment);
 
   /// Captures the segment bytes into the a JpegSegmentInfo's byte vector if
   /// the SetCaptureSegmentBytes() has been called for the segment info type.
@@ -120,14 +146,20 @@ class JpegInfoBuilder : public JpegSegmentProcessor {
   JpegXmpInfoBuilder gdepth_info_builder_;
   JpegXmpInfoBuilder gimage_info_builder_;
 
+  /// The HDR gain map info.
+  JpegGainMapInfo gain_map_info_;
+
   /// The collected data describing the type/location of data in the JPEG file.
   JpegInfo jpeg_info_;
 
   /// The types of the segment info type to capture the bytes of.
   std::set<std::string> capture_segment_bytes_types_;
+
+  /// Any Jpeg segment errors that were encountered.
+  std::vector<JpegSegmentError> segment_errors_;
 };
 
 }  // namespace image_io
 }  // namespace photos_editing_formats
 
-#endif // IMAGE_IO_JPEG_JPEG_INFO_BUILDER_H_  // NOLINT
+#endif  // IMAGE_IO_JPEG_JPEG_INFO_BUILDER_H_  // NOLINT

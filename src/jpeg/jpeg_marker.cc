@@ -11,7 +11,6 @@ namespace image_io {
 
 using std::string;
 using std::stringstream;
-using std::vector;
 
 // Storage for class (static) data members.
 const size_t JpegMarker::kLength;      // = 2;
@@ -24,6 +23,7 @@ const Byte JpegMarker::kEOI;           // = 0xD9;
 const Byte JpegMarker::kAPP0;          // = 0xE0;
 const Byte JpegMarker::kAPP1;          // = 0xE1;
 const Byte JpegMarker::kAPP2;          // = 0xE2;
+const Byte JpegMarker::kAPP15;         // = 0xEF;
 const Byte JpegMarker::kFILL;          // = 0xFF;
 
 const std::string JpegMarker::GetName() const {
@@ -66,7 +66,7 @@ const std::string JpegMarker::GetName() const {
     name_stream << "RST" << type_-0xD0;
     return name_stream.str();
   }
-  if (JpegMarker::kAPP0 <= type_ && type_ <= JpegMarker::kAPP0+15) {
+  if (JpegMarker::kAPP0 <= type_ && type_ <= JpegMarker::kAPP15) {
     name_stream << "APP" << type_-JpegMarker::kAPP0;
     return name_stream.str();
   }

@@ -39,6 +39,7 @@ class JpegMarker {
   static const Byte kAPP0 = 0xE0;
   static const Byte kAPP1 = 0xE1;
   static const Byte kAPP2 = 0xE2;
+  static const Byte kAPP15 = 0xEF;
   static const Byte kFILL = 0xFF;
 
   /// A set of bits, one for each type of marker.

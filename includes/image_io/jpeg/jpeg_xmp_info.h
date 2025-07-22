@@ -18,6 +18,7 @@ const size_t kXmpExtendedHeaderSize =
 /// Constants used to find and process information in APP1/XMP type segments.
 const char kXmpAppleDepthId[] = "http://ns.apple.com/depthData/1.0";
 const char kXmpAppleMatteId[] = "http://ns.apple.com/portraitEffectsMatte/1.0/";
+const char kXmpDynamicDepthId[] = "http://ns.google.com/photos/dd/1.0/device/";
 const char kXmpGDepthV1Id[] = "http://ns.google.com/photos/1.0/depthmap/";
 const char kXmpGImageV1Id[] = "http://ns.google.com/photos/1.0/image/";
 const char kXmpHasExtendedId[] = "xmpNote:HasExtendedXMP";

@@ -1,12 +1,19 @@
 #include "image_io/jpeg/jpeg_info_builder.h"
 
+#include <cstddef>
+#include <limits>
 #include <sstream>
 #include <string>
 
-#include "image_io/base/message_handler.h"
+#include "image_io/base/data_range.h"
+#include "image_io/base/types.h"
+#include "image_io/iso/iso_gain_map_constants.h"
+#include "image_io/jpeg/jpeg_gain_map_info.h"
 #include "image_io/jpeg/jpeg_marker.h"
 #include "image_io/jpeg/jpeg_scanner.h"
 #include "image_io/jpeg/jpeg_segment.h"
+#include "image_io/jpeg/jpeg_segment_info.h"
+#include "image_io/jpeg/jpeg_xmp_info.h"
 
 namespace photos_editing_formats {
 namespace image_io {
@@ -16,7 +23,8 @@ using std::stringstream;
 using std::vector;
 
 JpegInfoBuilder::JpegInfoBuilder()
-    : image_limit_(std::numeric_limits<int>::max()), image_count_(0),
+    : image_limit_(std::numeric_limits<int>::max()),
+      image_count_(0),
       gdepth_info_builder_(JpegXmpInfo::kGDepthInfoType),
       gimage_info_builder_(JpegXmpInfo::kGImageInfoType) {}
 
@@ -29,9 +37,9 @@ void JpegInfoBuilder::Start(JpegScanner* scanner) {
   JpegMarker::Flags marker_flags;
   marker_flags[JpegMarker::kSOI] = true;
   marker_flags[JpegMarker::kEOI] = true;
-  marker_flags[JpegMarker::kAPP0] = true;
-  marker_flags[JpegMarker::kAPP1] = true;
-  marker_flags[JpegMarker::kAPP2] = true;
+  for (Byte index = JpegMarker::kAPP0; index <= JpegMarker::kAPP15; ++index) {
+    marker_flags[index] = true;
+  }
   scanner->UpdateInterestingMarkerFlags(marker_flags);
 }
 
@@ -39,18 +47,21 @@ void JpegInfoBuilder::Process(JpegScanner* scanner,
                               const JpegSegment& segment) {
   // SOI segments are used to track of the number of images in the JPEG file.
   // Apple depth images start with a SOI marker, so store its range for later.
+  bool known_app_segment = false;
   JpegMarker marker = segment.GetMarker();
   if (marker.GetType() == JpegMarker::kSOI) {
     image_count_++;
     image_mpf_count_.push_back(0);
     image_xmp_apple_depth_count_.push_back(0);
     image_xmp_apple_matte_count_.push_back(0);
+    gain_map_info_ = JpegGainMapInfo();
     most_recent_soi_marker_range_ =
         DataRange(segment.GetBegin(), segment.GetBegin() + JpegMarker::kLength);
   } else if (marker.GetType() == JpegMarker::kEOI) {
     if (most_recent_soi_marker_range_.IsValid()) {
       DataRange image_range(most_recent_soi_marker_range_.GetBegin(),
                             segment.GetBegin() + JpegMarker::kLength);
+      most_recent_soi_marker_range_ = DataRange();
       jpeg_info_.AddImageRange(image_range);
       // This image range might represent the Apple depth or matte image if
       // other info indicates such an image is in progress and the apple image
@@ -61,38 +72,66 @@ void JpegInfoBuilder::Process(JpegScanner* scanner,
       if (HasAppleMatte() && !jpeg_info_.GetAppleMatteImageRange().IsValid()) {
         jpeg_info_.SetAppleMatteImageRange(image_range);
       }
+      if (gain_map_info_.HasValidXmpMetadataRange() ||
+          gain_map_info_.HasValidIsoMetadataRange()) {
+        gain_map_info_.image_range = image_range;
+        jpeg_info_.SetGainMapInfo(gain_map_info_);
+      }
       if (image_count_ >= image_limit_) {
         scanner->SetDone();
       }
+    } else {
+      // A EOI without a SOI!
+      AddSegmentError(JpegSegmentError{
+          .data_range = segment.GetDataRange(),
+          .error_message = "EOI segment without a SOI segment"});
     }
   } else if (marker.GetType() == JpegMarker::kAPP0) {
     // APP0/JFIF segments are interesting.
-    if (image_count_ > 0 && IsJfifSegment(segment)) {
-      const auto& data_range = segment.GetDataRange();
-      JpegSegmentInfo segment_info(image_count_ - 1, data_range, kJfif);
-      MaybeCaptureSegmentBytes(kJfif, segment, segment_info.GetMutableBytes());
-      jpeg_info_.AddSegmentInfo(segment_info);
+    if (IsJfifSegment(segment)) {
+      known_app_segment = true;
+      if (image_count_ > 0) {
+        const auto& data_range = segment.GetDataRange();
+        JpegSegmentInfo segment_info(image_count_ - 1, data_range, kJfif);
+        MaybeCaptureSegmentBytes(kJfif, segment,
+                                 segment_info.GetMutableBytes());
+        jpeg_info_.AddSegmentInfo(segment_info);
+      }
     }
   } else if (marker.GetType() == JpegMarker::kAPP2) {
     // APP2/MPF segments. JPEG files with Apple depth information have this
     // segment in the primary (first) image of the file, but note their presence
     // where ever they are found.
-    if (image_count_ > 0 && IsMpfSegment(segment)) {
-      ++image_mpf_count_[image_count_ - 1];
-      const auto& data_range = segment.GetDataRange();
-      JpegSegmentInfo segment_info(image_count_ - 1, data_range, kMpf);
-      MaybeCaptureSegmentBytes(kMpf, segment, segment_info.GetMutableBytes());
-      jpeg_info_.AddSegmentInfo(segment_info);
+    if (IsMpfSegment(segment)) {
+      known_app_segment = true;
+      if (image_count_ > 0) {
+        ++image_mpf_count_[image_count_ - 1];
+        const auto& data_range = segment.GetDataRange();
+        JpegSegmentInfo segment_info(image_count_ - 1, data_range, kMpf);
+        MaybeCaptureSegmentBytes(kMpf, segment, segment_info.GetMutableBytes());
+        jpeg_info_.AddSegmentInfo(segment_info);
+      }
+    } else if (IsIsoGainMapMetadataSegment(segment)) {
+      known_app_segment = true;
+      if (image_count_ > 1) {
+        const auto& data_range = segment.GetDataRange();
+        gain_map_info_.iso_segment_range = data_range;
+      }
     }
   } else if (marker.GetType() == JpegMarker::kAPP1) {
     // APP1/XMP segments. Both Apple depth and GDepthV1 image formats have
     // APP1/XMP segments with important information in them. There are two types
     // of XMP segments, a primary one (that starts with kXmpId) and an extended
     // one (that starts with kExtendedXmpId). Apple depth information is only in
-    // the former, while GDepthV1/GImageV1 information is in both.
+    // the former, while GDepthV1/GImageV1 information is in both. The dynamic
+    // depth id could be in any XMP segment of the first image.
+    if (image_count_ == 1 && HasId(segment, kXmpDynamicDepthId)) {
+      jpeg_info_.SetDynamicDepthData(true);
+    }
     if (IsPrimaryXmpSegment(segment)) {
       // The primary XMP segment in a non-primary image (i.e., not the first
       // image in the file) may contain Apple depth/matte information.
+      known_app_segment = true;
       if (image_count_ > 1 && HasId(segment, kXmpAppleDepthId)) {
         ++image_xmp_apple_depth_count_[image_count_ - 1];
       } else if (image_count_ > 1 && HasId(segment, kXmpAppleMatteId)) {
@@ -104,20 +143,41 @@ void JpegInfoBuilder::Process(JpegScanner* scanner,
         SetPrimaryXmpGuid(segment);
         SetXmpMimeType(segment, JpegXmpInfo::kGDepthInfoType);
         SetXmpMimeType(segment, JpegXmpInfo::kGImageInfoType);
+      } else if (image_count_ > 1) {
+        bool hasAdobeGainMap = HasId(segment, kAdobeGainMapUri);
+        bool hasAppleGainMap = HasId(segment, kAppleGainMapUri);
+        if (hasAdobeGainMap || hasAppleGainMap) {
+          const auto& data_range = segment.GetDataRange();
+          auto uri = hasAdobeGainMap ? kAdobeGainMapUri : kAppleGainMapUri;
+          gain_map_info_.xmp_segment_range = data_range;
+          gain_map_info_.xmp_namespace_uri = uri;
+        }
       }
-    } else if (image_count_ == 1 && IsExtendedXmpSegment(segment)) {
+
+    } else if (IsExtendedXmpSegment(segment)) {
       // The extended XMP segment in the primary image may contain GDepth and/or
       // GImage data.
-      if (HasMatchingExtendedXmpGuid(segment)) {
-        gdepth_info_builder_.ProcessSegment(segment);
-        gimage_info_builder_.ProcessSegment(segment);
+      known_app_segment = true;
+      if (image_count_ > 0) {
+        if (HasMatchingExtendedXmpGuid(segment)) {
+          gdepth_info_builder_.ProcessSegment(segment);
+          gimage_info_builder_.ProcessSegment(segment);
+        }
       }
-    } else if (image_count_ > 0 && IsExifSegment(segment)) {
-      const auto& data_range = segment.GetDataRange();
-      JpegSegmentInfo segment_info(image_count_ - 1, data_range, kExif);
-      MaybeCaptureSegmentBytes(kExif, segment, segment_info.GetMutableBytes());
-      jpeg_info_.AddSegmentInfo(segment_info);
+    } else if (IsExifSegment(segment)) {
+      known_app_segment = true;
+      if (image_count_ > 0) {
+        const auto& data_range = segment.GetDataRange();
+        JpegSegmentInfo segment_info(image_count_ - 1, data_range, kExif);
+        MaybeCaptureSegmentBytes(kExif, segment,
+                                 segment_info.GetMutableBytes());
+        jpeg_info_.AddSegmentInfo(segment_info);
+      }
     }
+  }
+  if (!known_app_segment && marker.GetType() >= JpegMarker::kAPP0 &&
+      marker.GetType() <= JpegMarker::kAPP15) {
+    ProcessExtraAppSegment(segment);
   }
 }
 
@@ -162,6 +222,13 @@ bool JpegInfoBuilder::IsPrimaryXmpSegment(const JpegSegment& segment) const {
 bool JpegInfoBuilder::IsExtendedXmpSegment(const JpegSegment& segment) const {
   size_t location = segment.GetPayloadDataLocation();
   return segment.BytesAtLocationStartWith(location, kXmpExtendedId);
+}
+
+bool JpegInfoBuilder::IsIsoGainMapMetadataSegment(
+    const JpegSegment& segment) const {
+  size_t payload_data_location = segment.GetPayloadDataLocation();
+  return segment.BytesAtLocationStartWith(payload_data_location,
+                                          kIsoGainMapMetadataURN);
 }
 
 bool JpegInfoBuilder::IsMpfSegment(const JpegSegment& segment) const {
@@ -226,6 +293,16 @@ void JpegInfoBuilder::SetXmpMimeType(const JpegSegment& segment,
   jpeg_info_.SetMimeType(xmp_info_type, segment.ExtractXmpPropertyValue(
                                             segment.GetPayloadDataLocation(),
                                             property_name.c_str()));
+}
+
+void JpegInfoBuilder::ProcessExtraAppSegment(const JpegSegment& segment) {
+  const size_t kCount = 22;
+  string ascii_string, hex_string;
+  segment.GetPayloadHexDumpStrings(kCount, &hex_string, &ascii_string);
+  stringstream ss;
+  size_t len = ascii_string.find('.', 2);
+  ss << segment.GetMarker().GetName() << ":" << ascii_string.substr(2, len - 2);
+  jpeg_info_.UpdateExtraAppSegmentStats(ss.str(), segment.GetLength());
 }
 
 }  // namespace image_io

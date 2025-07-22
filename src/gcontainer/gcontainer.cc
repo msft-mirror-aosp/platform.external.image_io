@@ -1,6 +1,8 @@
 #include "image_io/gcontainer/gcontainer.h"
 
 #include <fstream>
+#include <string>
+#include <utility>
 
 #include "image_io/base/data_segment.h"
 #include "image_io/base/data_segment_data_source.h"
@@ -18,7 +20,6 @@ namespace gcontainer {
 namespace {
 
 using photos_editing_formats::image_io::DataRange;
-using photos_editing_formats::image_io::DataSegment;
 using photos_editing_formats::image_io::DataSegmentDataSource;
 using photos_editing_formats::image_io::IStreamRefDataSource;
 using photos_editing_formats::image_io::JpegInfoBuilder;

@@ -1,5 +1,6 @@
 #include "image_io/jpeg/jpeg_segment.h"
 
+#include <algorithm>
 #include <cctype>
 #include <iomanip>
 #include <sstream>

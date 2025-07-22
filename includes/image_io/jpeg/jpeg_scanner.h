@@ -71,6 +71,9 @@ class JpegScanner {
   /// Asks the DataSource for the next DataSegment.
   void GetNextSegment();
 
+  /// Sets the error and done flags.
+  void SetErrorAndDone();
+
  private:
   /// An optional message handler to write messages to.
   MessageHandler* message_handler_;

@@ -26,8 +26,9 @@ class MessageStatsWriter {
 
   /// Writes the finished message with the stats to the outputter function.
   ~MessageStatsWriter() {
-    const string kError = stats_->error_count == 1 ? "error" : "errors";
-    const string kWarning = stats_->warning_count == 1 ? "warning" : "warnings";
+    const std::string kError = stats_->error_count == 1 ? "error" : "errors";
+    const std::string kWarning =
+        stats_->warning_count == 1 ? "warning" : "warnings";
     std::stringstream ss;
     ss << std::endl
        << name_ << " finished, " << stats_->error_count << " " << kError << ", "

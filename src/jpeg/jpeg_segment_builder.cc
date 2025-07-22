@@ -1,5 +1,7 @@
 #include "image_io/jpeg/jpeg_segment_builder.h"
 
+#include <string>
+
 #include "image_io/jpeg/jpeg_marker.h"
 
 namespace photos_editing_formats {
@@ -18,6 +20,9 @@ const char kRdfPrefix[] =
 const char kRdfSuffix[] = "</rdf:RDF>";
 const char kRdfDescriptionPrefix[] = "<rdf:Description rdf:about=\"\"";
 const char kRdfDescriptionSuffix[] = "/>";
+const char kXmpPacketBegin[] =
+    "<?xpacket begin=\"\xef\xbb\xbf\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\n";
+const char kXmpPacketEnd[] = "<?xpacket end='w'?>";
 
 bool JpegSegmentBuilder::SetPayloadSize(ByteBuffer* byte_buffer) {
   std::uint16_t size = byte_buffer->GetSize();
@@ -95,6 +100,14 @@ void JpegSegmentBuilder::AddExtendedXmpHeader(const std::string& xmp_guid) {
   byte_data_.emplace_back(ByteData::kAscii0, kXmpExtendedId);
   byte_data_.emplace_back(ByteData::kAscii, guid_value);
   byte_data_.emplace_back(ByteData::kAscii, string(8, '0'));
+}
+
+void JpegSegmentBuilder::AddXmpPacketBegin() {
+  byte_data_.emplace_back(ByteData::kAscii, kXmpPacketBegin);
+}
+
+void JpegSegmentBuilder::AddXmpPacketEnd() {
+  byte_data_.emplace_back(ByteData::kAscii, kXmpPacketEnd);
 }
 
 void JpegSegmentBuilder::AddXmpMetaPrefix() {
