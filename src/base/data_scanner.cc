@@ -21,10 +21,10 @@ size_t memspn(const char* s, size_t slen, const char* accept) {
   char c, sc;
 
 cont:
-  if (slen-- == 0) return p - s;
+  if (slen == 0) return p - s;
   c = *p++;
+  slen--;
 
-  if (slen-- == 0) return p - 1 - s;
   for (spanp = accept; (sc = *spanp++) != '\0';)
     if (sc == c) goto cont;
   return p - 1 - s;
